@@ -50,7 +50,12 @@ namespace Gateway.Controllers
 
             if (!(await checkReservationService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Reservation Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
             var response = await _reservationsService.GetHotelsAsync(page, size);
             return response;
@@ -64,7 +69,12 @@ namespace Gateway.Controllers
 
             if (!(await checkReservationService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Reservation Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var reservations = await _reservationsService.GetReservationsByUsernameAsync(xUserName);
@@ -99,7 +109,7 @@ namespace Gateway.Controllers
                         FullAddress = hotel.Country + ", " + hotel.City + ", " + hotel.Address,
                         Stars = hotel.Stars,
                     },
-                    Payment = new PaymentInfo()
+                    Payment = payment == null ? new object[] { } : new PaymentInfo()
                     {
                         Status = payment?.Status,
                         Price = payment?.Price,
@@ -118,7 +128,7 @@ namespace Gateway.Controllers
 
             }
 
-            response.Loyalty = new LoyaltyInfo()
+            response.Loyalty = loyalty == null ? new object[]{} : new LoyaltyInfo()
             {
                 Status = loyalty?.Status,
                 Discount = loyalty?.Discount,
@@ -135,7 +145,12 @@ namespace Gateway.Controllers
 
             if (!(await checkReservationService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Reservation Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var reservations = await _reservationsService.GetReservationsByUsernameAsync(xUserName);
@@ -193,7 +208,12 @@ namespace Gateway.Controllers
 
             if (!(await checkReservationService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Reservation Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var reservation = await _reservationsService.GetReservationsByUidAsync(reservationsUid);
@@ -253,7 +273,12 @@ namespace Gateway.Controllers
 
             if (!(await checkReservationService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Reservation Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var hotel = await _reservationsService.GetHotelsByUidAsync(request.HotelUid);
@@ -269,7 +294,12 @@ namespace Gateway.Controllers
 
             if (!(await checkLoyaltyService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Loyalty Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var loyalty = await _loyaltyService.GetLoyaltyByUsernameAsync(xUserName);
@@ -296,7 +326,12 @@ namespace Gateway.Controllers
 
             if (!(await checkPaymentService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Payment Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var payment = await _paymentsService.CreatePaymentAsync(paymentRequest);
@@ -311,7 +346,12 @@ namespace Gateway.Controllers
             if (!(await checkLoyaltyService))
             {
                 await _paymentsService.RollBackPayment(payment.PaymentUid);
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Loyalty Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             loyalty = await _loyaltyService.PutLoyaltyByUsernameAsync(xUserName);
@@ -355,7 +395,12 @@ namespace Gateway.Controllers
 
             if (!(await checkReservationService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Reservation Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var reservation = await _reservationsService.GetReservationsByUidAsync(reservationsUid);
@@ -370,7 +415,12 @@ namespace Gateway.Controllers
 
             if (!(await checkPaymentService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Payment Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
 
             var updatePaymentTask = _paymentsService.CancelPaymentByUidAsync(reservation.PaymentUid);
@@ -392,7 +442,12 @@ namespace Gateway.Controllers
 
             if (!(await checkLoyaltyService))
             {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable);
+                var resp = new ErrorResponse()
+                {
+                    Message = "Loyalty Service unavailable",
+                };
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return new ObjectResult(resp);
             }
             var loyalty = await _loyaltyService.GetLoyaltyByUsernameAsync(xUserName);
 

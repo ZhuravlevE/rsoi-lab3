@@ -28,8 +28,16 @@ namespace Gateway.Services
         {
             using var req = new HttpRequestMessage(HttpMethod.Get,
                 "manage/health");
-            using var res = await _httpClient.SendAsync(req);
-            return res.StatusCode == HttpStatusCode.OK;
+            try
+            {
+                using var res = await _httpClient.SendAsync(req);
+                return res.StatusCode == HttpStatusCode.OK;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return false;
+            }
         }
 
         public async Task<Loyalty?> GetLoyaltyByUsernameAsync(string username)
