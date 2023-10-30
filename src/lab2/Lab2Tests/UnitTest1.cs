@@ -1,152 +1,334 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using Microsoft.Extensions.Logging;
+using Gateway.ServiceInterfaces;
+using Gateway.Controllers;
+using Gateway.Models;
+using Gateway.DTO;
+using System.Net;
+using System.Threading.Tasks;
 using System.Collections.Generic;
+using System;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Drawing;
 
 namespace Lab2Tests
 {
     [TestClass]
     public class UnitTest1
     {
-        private LoyaltyDBContext _loyaltyContext;
-        private 
-
-        [TestInitialize]
-        public void Init()
+        [TestMethod]
+        public async Task TestGetAllHotels()
         {
-            var options = new DbContextOptionsBuilder<transfersystemContext>()
-                .UseInMemoryDatabase("PersonsControllerTest")
-                .Options;
-            db = new transfersystemContext(options);
-            db.Database.EnsureDeleted();
-            db.Database.EnsureCreated();
-            personRep = new PersonRep(db);
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-        }
+            var reservationMock = new Mock<IReservationService>();
+            //var healthCheckResponse = new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-        private Boolean PersonCompare(Person first, Person second)
-        {
-            return first.Name == second.Name && first.Age == second.Age && first.Address == second.Address && first.Work == second.Work ? true : false;
+            int? page = 1, size = 5;
+            Task<PaginationResponse<IEnumerable<Hotels>>?> returnHotelsTask = Task.Run(() => Builder.BuildHotelsPages(page, size));
+            reservationMock.Setup(a => a.GetHotelsAsync(page, size)).Returns(returnHotelsTask);
+
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            var responseTask = controller.GetAllHotels(page, size);
+            var response = await responseTask;
+            var hotels = response.Value;
+
+            reservationMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsAsync(page, size), Times.Once());
+            Assert.IsTrue(responseTask.IsCompletedSuccessfully);
+            Assert.IsTrue(hotels.TotalElements.Equals(3));
         }
 
         [TestMethod]
-        public void TestPatch()
+        public async Task TestGetUserInfoByUsername()
         {
-            Person changedPerson = new Person { Id = 2, Name = "Alan", Age = 47, Address = "Erevan", Work = "Yandex" };
-            Person checkPerson;
-            List<Person> persons = new List<Person>();
-            persons.Add(new Person { Id = 1, Name = "Alex", Age = 24, Address = "Los Angeles", Work = "Google" });
-            persons.Add(new Person { Id = 2, Name = "Ivan", Age = 20, Address = "Moscow", Work = "Yandex" });
-            persons.Add(new Person { Id = 3, Name = "Dasha", Age = 30, Address = "Beijing", Work = "TikTok" });
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-            foreach (Person person in persons)
-            {
-                checkPerson = personRep.Add(person);
-                Assert.IsTrue(PersonCompare(person, checkPerson));
-            }
+            var reservationMock = new Mock<IReservationService>();
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-            checkPerson = personRep.Update(changedPerson);
-            Assert.IsTrue(PersonCompare(changedPerson, checkPerson));
+            string username = "TestUsername";
+            Task<IEnumerable<Reservation>?> returnReservationsTask = Task.Run(() => Builder.BuildReservationsList(username));
+            reservationMock.Setup(a => a.GetReservationsByUsernameAsync(username)).Returns(returnReservationsTask);
 
-            checkPerson = personRep.FindUserByID(changedPerson.Id);
-            Assert.IsTrue(PersonCompare(changedPerson, checkPerson));
+            int id = 1;
+            Task<Hotels?> returnHotelByIdTask = Task.Run(() => Builder.BuildHotelById(id));
+            reservationMock.Setup(a => a.GetHotelsByIdAsync(id)).Returns(returnHotelByIdTask);
+
+            id = 2;
+            returnHotelByIdTask = Task.Run(() => Builder.BuildHotelById(id));
+            reservationMock.Setup(a => a.GetHotelsByIdAsync(id)).Returns(returnHotelByIdTask);
+
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            Guid guid = System.Guid.Empty;
+            Task<Payment?> returnPaymentByGuidTask = Task.Run(() => Builder.BuildPaymentByUId(guid));
+            paymentMock.Setup(a => a.GetPaymentByUidAsync(guid)).Returns(returnPaymentByGuidTask);
+
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            Task<Loyalty?> returnLoyaltyByUsernameTask = Task.Run(() => Builder.BuildLoyaltyByUsername(username));
+            loyaltyMock.Setup(a => a.GetLoyaltyByUsernameAsync(username)).Returns(returnLoyaltyByUsernameTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            var responseTask = controller.GetUserInfoByUsername(username);
+            var response = await responseTask;
+            var info = response.Value;
+
+            reservationMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            reservationMock.Verify(mock => mock.GetReservationsByUsernameAsync(username), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsByIdAsync(1), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsByIdAsync(2), Times.Once());
+
+            paymentMock.Verify(mock => mock.HealthCheckAsync(), Times.Exactly(2));
+            paymentMock.Verify(mock => mock.GetPaymentByUidAsync(guid), Times.Exactly(2));
+
+            loyaltyMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            loyaltyMock.Verify(mock => mock.GetLoyaltyByUsernameAsync(username), Times.Once());
+
+            Assert.IsTrue(responseTask.IsCompletedSuccessfully);
+            Assert.IsTrue(info.Reservations.Count.Equals(2));
         }
 
         [TestMethod]
-        public void TestOkDelete()
+        public async Task TestGetReservationsInfoByUsername()
         {
-            Person checkPerson;
-            List<Person> persons = new List<Person>();
-            persons.Add(new Person { Id = 1, Name = "Alex", Age = 24, Address = "Los Angeles", Work = "Google" });
-            persons.Add(new Person { Id = 2, Name = "Ivan", Age = 20, Address = "Moscow", Work = "Yandex" });
-            persons.Add(new Person { Id = 3, Name = "Dasha", Age = 30, Address = "Beijing", Work = "TikTok" });
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-            foreach (Person person in persons)
-            {
-                checkPerson = personRep.Add(person);
-                Assert.IsTrue(PersonCompare(person, checkPerson));
-            }
+            var reservationMock = new Mock<IReservationService>();
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-            ErrorCode code = personRep.Delete(persons[1].Id);
-            Assert.IsTrue(code.Equals(ErrorCode.OK));
+            string username = "TestUsername";
+            Task<IEnumerable<Reservation>?> returnReservationsTask = Task.Run(() => Builder.BuildReservationsList(username));
+            reservationMock.Setup(a => a.GetReservationsByUsernameAsync(username)).Returns(returnReservationsTask);
 
-            checkPerson = personRep.FindUserByID(persons[1].Id);
-            Assert.IsNull(checkPerson);
+            int id = 1;
+            Task<Hotels?> returnHotelByIdTask = Task.Run(() => Builder.BuildHotelById(id));
+            reservationMock.Setup(a => a.GetHotelsByIdAsync(id)).Returns(returnHotelByIdTask);
+
+            id = 2;
+            returnHotelByIdTask = Task.Run(() => Builder.BuildHotelById(id));
+            reservationMock.Setup(a => a.GetHotelsByIdAsync(id)).Returns(returnHotelByIdTask);
+
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            Guid guid = System.Guid.Empty;
+            Task<Payment?> returnPaymentByGuidTask = Task.Run(() => Builder.BuildPaymentByUId(guid));
+            paymentMock.Setup(a => a.GetPaymentByUidAsync(guid)).Returns(returnPaymentByGuidTask);
+
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            var responseTask = controller.GetUserInfoByUsername(username);
+            var response = await responseTask;
+            var info = response.Value;
+
+            reservationMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            reservationMock.Verify(mock => mock.GetReservationsByUsernameAsync(username), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsByIdAsync(1), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsByIdAsync(2), Times.Once());
+
+            paymentMock.Verify(mock => mock.HealthCheckAsync(), Times.Exactly(2));
+            paymentMock.Verify(mock => mock.GetPaymentByUidAsync(guid), Times.Exactly(2));
+
+            Assert.IsTrue(responseTask.IsCompletedSuccessfully);
+            Assert.IsTrue(info.Reservations.Count.Equals(2));
         }
 
         [TestMethod]
-        public void TestNotFoundDelete()
+        public async Task TestGetReservationsInfoByGuid()
         {
-            Person checkPerson;
-            List<Person> persons = new List<Person>();
-            persons.Add(new Person { Id = 1, Name = "Alex", Age = 24, Address = "Los Angeles", Work = "Google" });
-            persons.Add(new Person { Id = 2, Name = "Ivan", Age = 20, Address = "Moscow", Work = "Yandex" });
-            persons.Add(new Person { Id = 3, Name = "Dasha", Age = 30, Address = "Beijing", Work = "TikTok" });
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-            foreach (Person person in persons)
-            {
-                checkPerson = personRep.Add(person);
-                Assert.IsTrue(PersonCompare(person, checkPerson));
-            }
+            var reservationMock = new Mock<IReservationService>();
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-            ErrorCode code = personRep.Delete(5);
-            Assert.IsTrue(code.Equals(ErrorCode.NotFound));
+            Guid guid = System.Guid.Empty;
+            Task<Reservation?> returnReservationTask = Task.Run(() => Builder.BuildReservationByGuid(guid));
+            reservationMock.Setup(a => a.GetReservationsByUidAsync(guid)).Returns(returnReservationTask);
+
+            int id = 1;
+            Task<Hotels?> returnHotelByIdTask = Task.Run(() => Builder.BuildHotelById(id));
+            reservationMock.Setup(a => a.GetHotelsByIdAsync(id)).Returns(returnHotelByIdTask);
+
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            Task<Payment?> returnPaymentByGuidTask = Task.Run(() => Builder.BuildPaymentByUId(guid));
+            paymentMock.Setup(a => a.GetPaymentByUidAsync(guid)).Returns(returnPaymentByGuidTask);
+
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            string username = "TestUsername";
+
+            var responseTask = controller.GetReservationsInfoByUsername(guid, username);
+            var response = await responseTask;
+            var info = response.Value;
+
+            reservationMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            reservationMock.Verify(mock => mock.GetReservationsByUidAsync(guid), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsByIdAsync(1), Times.Once());
+
+            paymentMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            paymentMock.Verify(mock => mock.GetPaymentByUidAsync(guid), Times.Once());
+
+            Assert.IsTrue(responseTask.IsCompletedSuccessfully);
+            Assert.IsTrue(info.Hotel.Stars.Equals(1));
         }
 
         [TestMethod]
-        public void TestGetAll()
+        public async Task TestCreateReservation()
         {
-            Person checkPerson;
-            List<Person> persons = new List<Person>();
-            persons.Add(new Person { Id = 1, Name = "Alex", Age = 24, Address = "Los Angeles", Work = "Google" });
-            persons.Add(new Person { Id = 2, Name = "Ivan", Age = 20, Address = "Moscow", Work = "Yandex" });
-            persons.Add(new Person { Id = 3, Name = "Dasha", Age = 30, Address = "Beijing", Work = "TikTok" });
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-            foreach (Person person in persons)
-            {
-                checkPerson = personRep.Add(person);
-                Assert.IsTrue(PersonCompare(person, checkPerson));
-            }
+            var reservationMock = new Mock<IReservationService>();
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-            foreach (Person person in persons)
-            {
-                checkPerson = personRep.FindUserByID(person.Id);
-                Assert.IsTrue(PersonCompare(person, checkPerson));
-            }
+            Guid guid = System.Guid.Empty;
+            Task<Hotels?> returnHotelByUidTask = Task.Run(() => Builder.BuildHotelByUid(guid));
+            reservationMock.Setup(a => a.GetHotelsByUidAsync(guid)).Returns(returnHotelByUidTask);
+
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            string username = "TestUsername";
+            Task<Loyalty?> returnLoyaltyByUsernameTask = Task.Run(() => Builder.BuildLoyaltyByUsername(username));
+            loyaltyMock.Setup(a => a.GetLoyaltyByUsernameAsync(username)).Returns(returnLoyaltyByUsernameTask);
+
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            int sum = 36000;
+            Task<Payment?> returnCreatedPaymentTask = Task.Run(() => Builder.BuildPaymentResponse(sum));
+            paymentMock.Setup(a => a.CreatePaymentAsync(It.IsAny<Payment>())).Returns(returnCreatedPaymentTask);
+
+            //Task<Payment?> returnCreatedPaymentTask = Task.Run(() => Builder.BuildPaymentResponse(sum));
+            //paymentMock.Setup(a => a.CreatePaymentAsync(Builder.BuildPaymentRequest(sum))).Returns(returnCreatedPaymentTask);
+
+
+            Task<Loyalty?> returnPutedLoyaltyTask = Task.Run(() => Builder.BuildLoyaltyByUsername(username));
+            loyaltyMock.Setup(a => a.PutLoyaltyByUsernameAsync(username)).Returns(returnPutedLoyaltyTask);
+
+            Task<Reservation?> returnCreatedReservationTask = Task.Run(() => Builder.BuildReservationResponse());
+            reservationMock.Setup(a => a.CreateReservationAsync(username, It.IsAny<Reservation>())).Returns(returnCreatedReservationTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            var responseTask = controller.CreateReservation(username, Builder.BuildReservationRequestMessage());
+            var response = await responseTask;
+            var info = response.Value;
+
+            reservationMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            reservationMock.Verify(mock => mock.GetHotelsByUidAsync(guid), Times.Once());
+            //reservationMock.Verify(mock => mock.CreateReservationAsync(username, Builder.BuildReservationRequest()), Times.Once());
+            
+            paymentMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            //paymentMock.Verify(mock => mock.CreatePaymentAsync(Builder.BuildPaymentRequest(sum)), Times.Once());
+
+            loyaltyMock.Verify(mock => mock.HealthCheckAsync(), Times.Exactly(2));
+            loyaltyMock.Verify(mock => mock.GetLoyaltyByUsernameAsync(username), Times.Once());
+            loyaltyMock.Verify(mock => mock.PutLoyaltyByUsernameAsync(username), Times.Once());
+
+            Assert.IsTrue(responseTask.IsCompletedSuccessfully);
+            //Assert.IsTrue(info.Payment.Price.Equals(sum));
+            //Assert.IsTrue(info.Discount.Equals(10));
         }
 
         [TestMethod]
-        public void TestGetById()
+        public async Task TestDeleteReservationsByUid()
         {
-            Person checkPerson;
-            List<Person> persons = new List<Person>();
-            persons.Add(new Person { Id = 1, Name = "Alex", Age = 24, Address = "Los Angeles", Work = "Google" });
-            persons.Add(new Person { Id = 2, Name = "Ivan", Age = 20, Address = "Moscow", Work = "Yandex" });
-            persons.Add(new Person { Id = 3, Name = "Dasha", Age = 30, Address = "Beijing", Work = "TikTok" });
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-            foreach (Person person in persons)
-            {
-                checkPerson = personRep.Add(person);
-                Assert.IsTrue(PersonCompare(person, checkPerson));
-            }
+            var reservationMock = new Mock<IReservationService>();
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-            checkPerson = personRep.FindUserByID(persons[1].Id);
-            Assert.IsTrue(PersonCompare(persons[1], checkPerson));
+            Guid guid = System.Guid.Empty;
+            Task<Reservation?> returnReservationTask = Task.Run(() => Builder.BuildReservationByGuid(guid));
+            reservationMock.Setup(a => a.GetReservationsByUidAsync(guid)).Returns(returnReservationTask);
 
+            Task<Reservation?> returnReservationDeleteTask = Task.Run(() => Builder.BuildReservationByGuid(guid));
+            reservationMock.Setup(a => a.DeleteReservationAsync(guid)).Returns(returnReservationDeleteTask);
+
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            Task<Payment?> returnCanceledPaymentTask = Task.Run(() => Builder.BuildPaymentByUId(guid));
+            paymentMock.Setup(a => a.CancelPaymentByUidAsync(guid)).Returns(returnCanceledPaymentTask);
+
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            string username = "TestUsername";
+            Task<Loyalty?> returnLoyaltyByUsernameTask = Task.Run(() => Builder.BuildLoyaltyByUsername(username));
+            loyaltyMock.Setup(a => a.DeleteLoyaltyByUsernameAsync(username)).Returns(returnLoyaltyByUsernameTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            var responseTask = controller.DeleteReservationsByUid(guid, username);
+            var response = await responseTask;
+
+            reservationMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            reservationMock.Verify(mock => mock.GetReservationsByUidAsync(guid), Times.Once());
+            reservationMock.Verify(mock => mock.DeleteReservationAsync(guid), Times.Once());
+
+            paymentMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            paymentMock.Verify(mock => mock.CancelPaymentByUidAsync(guid), Times.Once());
+
+            loyaltyMock.Verify(mock => mock.DeleteLoyaltyByUsernameAsync(username), Times.Once());
+
+            Assert.IsTrue(responseTask.IsCompletedSuccessfully);
         }
 
         [TestMethod]
-        public void TestPost()
+        public async Task TestGetLoyaltyInfoByUsername()
         {
-            Person person = new Person { Id = 1, Name = "Alan", Age = 20, Address = "Moscow", Work = "Yandex" };
+            var loggerMock = new Mock<ILogger<GatewayController>>();
 
-            person = personRep.Add(person);
+            var reservationMock = new Mock<IReservationService>();
+            Task<bool> healthCheckTask = Task.Run(() => true);
+            reservationMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
-            Person checkPerson = personRep.FindUserByID(person.Id);
-            Assert.IsTrue(PersonCompare(person, checkPerson));
+            var paymentMock = new Mock<IPaymentService>();
+            paymentMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
 
+            var loyaltyMock = new Mock<ILoyaltyService>();
+            loyaltyMock.Setup(a => a.HealthCheckAsync()).Returns(healthCheckTask);
+
+            string username = "TestUsername";
+            Task<Loyalty?> returnLoyaltyByUsernameTask = Task.Run(() => Builder.BuildLoyaltyByUsername(username));
+            loyaltyMock.Setup(a => a.GetLoyaltyByUsernameAsync(username)).Returns(returnLoyaltyByUsernameTask);
+
+            GatewayController controller = new GatewayController(loggerMock.Object, reservationMock.Object, paymentMock.Object, loyaltyMock.Object);
+
+            var responseTask = controller.GetLoyaltyInfoByUsername(username);
+            var response = await responseTask;
+
+            loyaltyMock.Verify(mock => mock.HealthCheckAsync(), Times.Once());
+            loyaltyMock.Verify(mock => mock.GetLoyaltyByUsernameAsync(username), Times.Once());
+        }
         }
     }
-}

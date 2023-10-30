@@ -7,10 +7,11 @@ using Gateway.DTO;
 using Gateway.Utils;
 using Gateway.Models;
 using System.Net;
+using Gateway.ServiceInterfaces;
 
 namespace Gateway.Services
 {
-    public class ReservationService
+    public class ReservationService : IReservationService
     {
         private readonly HttpClient _httpClient;
 

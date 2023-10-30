@@ -1,3 +1,4 @@
+using Gateway.ServiceInterfaces;
 using Gateway.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -25,10 +26,10 @@ namespace Gateway
             services.AddCors();
             //string CON_STRING = Environment.GetEnvironmentVariable("CON_STRING");
             
-            services.AddScoped<ReservationService>();
-            services.AddScoped<PaymentService>();
+            services.AddScoped<IReservationService, ReservationService>();
+            services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<RequestQueueService>();
-            services.AddScoped<LoyaltyService>();
+            services.AddScoped<ILoyaltyService, LoyaltyService>();
             services.AddControllers();
 
             services.AddSwaggerGen(c =>

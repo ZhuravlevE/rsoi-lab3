@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Gateway.Services;
+using Gateway.ServiceInterfaces;
 using Gateway.DTO;
 using Gateway.Models;
 using System.Collections.Generic;
@@ -16,12 +17,12 @@ namespace Gateway.Controllers
     public class GatewayController : ControllerBase
     {
         private readonly ILogger<GatewayController> _logger;
-        private readonly ReservationService _reservationsService;
-        private readonly PaymentService _paymentsService;
-        private readonly LoyaltyService _loyaltyService;
+        private readonly IReservationService _reservationsService;
+        private readonly IPaymentService _paymentsService;
+        private readonly ILoyaltyService _loyaltyService;
 
-        public GatewayController(ILogger<GatewayController> logger, ReservationService reservationsService,
-            PaymentService paymentsService, LoyaltyService loyaltyService)
+        public GatewayController(ILogger<GatewayController> logger, IReservationService reservationsService,
+            IPaymentService paymentsService, ILoyaltyService loyaltyService)
         {
             _logger = logger;
             _reservationsService = reservationsService;

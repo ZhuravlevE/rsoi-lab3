@@ -4,10 +4,11 @@ using Gateway.Models;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using System.Net;
+using Gateway.ServiceInterfaces;
 
 namespace Gateway.Services
 {
-    public class PaymentService
+    public class PaymentService : IPaymentService
     {
         private readonly HttpClient _httpClient;
 

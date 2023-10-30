@@ -8,10 +8,11 @@ using Gateway.Controllers;
 using Microsoft.Extensions.Logging;
 using Gateway.Utils;
 using System.Net;
+using Gateway.ServiceInterfaces;
 
 namespace Gateway.Services
 {
-    public class LoyaltyService
+    public class LoyaltyService : ILoyaltyService
     {
         private readonly RequestQueueService _requestQueueService;
         private readonly HttpClient _httpClient;
