@@ -8,7 +8,7 @@ namespace Gateway.DTO
     public class UserInfoResponse
     {
         public List<UserReservationInfo> Reservations { get; set; } = null!;
-        public dynamic Loyalty { get; set; } = null!;
+        public object Loyalty { get; set; } = null!;
     }
 
 
@@ -19,7 +19,7 @@ namespace Gateway.DTO
         public string Status { get; set; } = null!;
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
-        public dynamic Payment { get; set; }
+        public object Payment { get; set; }
     }
 
     public class LoyaltyInfo

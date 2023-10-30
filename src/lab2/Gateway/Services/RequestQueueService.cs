@@ -12,9 +12,11 @@ namespace Gateway.Services
         private readonly HttpClient _httpClient = new();
         private const int TimeoutInSeconds = 10;
         private static object locker = new();
+        private readonly CircuitBreaker _circuitBreaker;
 
         public RequestQueueService()
         {
+            _circuitBreaker = CircuitBreaker.Instance;
         }
 
         public void StartWorker()
@@ -46,6 +48,7 @@ namespace Gateway.Services
                         if (res.IsSuccessStatusCode)
                         {
                             _requestMessagesQueue.TryDequeue(out _);
+                            _circuitBreaker.ResetFailureCount();
                         }
                         else
                         {
